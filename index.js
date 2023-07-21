@@ -247,6 +247,64 @@
         return data?.data?.act?.data?.[0]?.data?.nextAvailablePixelTimestamp;
     }
 
+    /**
+     * requests the earliest timestamp for the next pixel placement from the server
+     * @returns the minimum delay to wait form the next placement in milliseconds
+     */
+    const zs_getCurrentTimeout = async () => {
+        console.log("Requesting timestamp for next Pixel-Placement");
+        const response = await fetch("https://gql-realtime-2.reddit.com/query", {
+            method: 'POST',
+            body: JSON.stringify({
+                operationName: 'GetPersonalizedTimer',
+                variables: {
+                    input: {
+                        channel: {
+                            teamOwner: "GARLICBREAD",
+                            category: "R_REPLACE",
+                            tag: "canvas:0:frames"
+                        }
+                    }
+                },
+                'query': `mutation GetPersonalizedTimer{
+                    act(
+                      input: {actionName: \"r/replace:get_user_cooldown\"}
+                    ) {
+                      data {
+                        ... on BasicMessage {
+                          id
+                          data {
+                            ... on GetUserCooldownResponseMessageData {
+                              nextAvailablePixelTimestamp
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                `
+            }),
+            headers: {
+                'origin': 'https://garlic-bread.reddit.com',
+                'referer': 'https://garlic-bread.reddit.com/',
+                'apollographql-client-name': 'garlic-bread',
+                'Authorization': `Bearer ${zs_accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json()
+        if (data.errors !== undefined) {
+            console.error(data.errors);
+            zs_error('Fehler beim Abfragen der Abklingzeit');
+            return null;
+        }
+        const timestamp = data?.data?.act?.data?.[0]?.data?.nextAvailablePixelTimestamp;
+        if (timestamp !== null) {
+            return (timestamp - Date.now());
+        }
+        return 0;
+    }
+
 
     let c2;
     let tokens = ['Wololo']; // We only have one token
